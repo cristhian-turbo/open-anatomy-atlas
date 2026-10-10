@@ -5,8 +5,9 @@
 // Also used by build-site.js --bones-es.
 const fs = require('fs'), path = require('path');
 const { toSpanish } = require('./es-bones');
-const keepT = new Set(['bone']);
-function bonesOnly(idx, bin) {
+// Generic per-system subset: keeps meshes whose category is in `types`.
+function subset(idx, bin, { types, translate, suffix, label, sideEs }) {
+const keepT = new Set(types);
 const [po] = idx.buffers.positions, [no] = idx.buffers.normals, [io, il] = idx.buffers.indices;
 const I = new Uint32Array(bin.buffer.slice(bin.byteOffset + io, bin.byteOffset + io + il));
 const elMap = new Map(), els = [], pos = [], nor = [], ind = [];
@@ -38,21 +39,24 @@ let N = Buffer.concat(nor);
 if (N.length % 4) N = Buffer.concat([N, Buffer.alloc(4 - (N.length % 4))]); // index buffer must start 4-byte aligned
 const b = [Infinity, Infinity, Infinity, -Infinity, -Infinity, -Infinity];
 for (const e of els) for (let a = 0; a < 3; a++) { b[a] = Math.min(b[a], e.b[a]); b[a + 3] = Math.max(b[a + 3], e.b[a + 3]); }
-const out = { ...idx, name: idx.name + ' (huesos)', categories: { bone: { ...idx.categories.bone, label: 'Huesos y dientes' } }, bbox: b,
+const cats = {}; for (const t of types) cats[t] = { ...idx.categories[t], label: label[t] };
+const out = { ...idx, name: idx.name + ` (${suffix})`, categories: cats, bbox: b,
   counts: { ...idx.counts, elements: els.length, concepts: concepts.length, triangles: ioOut / 3, vertices: vo },
   buffers: { positions: [0, P.length], normals: [P.length, N.length], indices: [P.length + N.length, X.length] },
   elements: els, concepts, roots: { partof: mapL(idx.roots.partof), isa: mapL(idx.roots.isa) } };
 // Spanish names: keep the English one as `en`, drop English definitions so
 // descriptions come from Spanish Wikipedia instead.
 for (const c of concepts) {
-  const es = toSpanish(c.name);
+  const es = translate(c.name);
   c.en = c.name.trim();
   if (es) c.name = es; else console.warn(`No Spanish name for "${c.en}"`);
   delete c.def;
+  if (sideEs && c.side) c.side = { left: 'lado izquierdo', right: 'lado derecho' }[c.side] || c.side;
 }
 return { index: out, bin: Buffer.concat([P, N, X]) };
 }
-module.exports = { bonesOnly };
+const bonesOnly = (idx, bin) => subset(idx, bin, { types: ['bone'], translate: toSpanish, suffix: 'huesos', label: { bone: 'Huesos y dientes' } });
+module.exports = { bonesOnly, subset };
 if (require.main === module) {
   const [src, dst] = process.argv.slice(2);
   const r = bonesOnly(JSON.parse(fs.readFileSync(path.join(src, 'index.json'), 'utf8')), fs.readFileSync(path.join(src, 'meshes.bin')));

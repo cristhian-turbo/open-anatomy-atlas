@@ -129,8 +129,21 @@
     return (h >>> 0) / 4294967295;
   }
 
+  // Per-system wording on the static site: the bones strings in index.html are the
+  // defaults; other systems override a few labels from data/atlases.json (`ui`).
+  let uiDefaults = null;
+  function applySystemUi() {
+    const tab = $('.tab[data-tab="tree"]'), prompt = $('#inspectEmpty h2'), search = $('#search');
+    if (!uiDefaults) uiDefaults = { tab: tab.textContent, prompt: prompt && prompt.textContent, search: search.placeholder, title: document.title };
+    const a = site && site.atlases.find(x => x.id === siteAtlas), u = (a && a.ui) || uiDefaults;
+    tab.textContent = u.tab; if (prompt) prompt.textContent = u.prompt; search.placeholder = u.search; search.setAttribute('aria-label', u.search);
+    document.title = u.title; $('.brand span') && ($('.brand span').textContent = u.title);
+    $('#btnData').hidden = !(site && site.atlases.length > 1);
+  }
+
   function useAtlas(data) {
     if (mode === 'quiz') quizReset();
+    applySystemUi();
     atlas = new Atlas(data.index);
     renderer.setAtlas(data.index, data.bin);
     userHidden = new Uint8Array(atlas.elements.length);
@@ -635,7 +648,7 @@
 
   async function openDataDialog() {
     $('#dlError').textContent = '';
-    if (site) $('#dataLead').textContent = `This online version includes ${site.atlases.length === 1 ? 'one atlas' : site.atlases.length + ' atlases'}. ${site.atlases.length > 1 ? 'Choose one to load it in your browser. ' : ''}To install the app and other atlases on your own computer, see the project page.`;
+    if (site) $('#dataLead').textContent = `Elige un sistema del cuerpo. Cada uno se descarga solo cuando lo abres.`;
     $('#optMirrorRow').hidden = !host;
     $('#optCommercialRow').hidden = !host;
     $('#dlImport').hidden = !host;
@@ -660,12 +673,13 @@
       const li = el('li', { class: active ? 'active' : '' });
       li.appendChild(el('div', { class: 'head' }, [
         el('span', { class: 'title', text: a.title }),
-        el('span', { class: 'state', text: active ? 'Showing now' : a.ready ? (site ? `Available online, ${a.size}` : 'Installed') : a.size }),
+        el('span', { class: 'state', text: active ? (site ? 'Abierto ahora' : 'Showing now') : a.ready ? (site ? `Disponible, ${a.size}` : 'Installed') : a.size }),
       ]));
       li.appendChild(el('p', { text: a.summary }));
-      if (a.ready) li.appendChild(el('p', { text: `${a.counts.elements.toLocaleString()} meshes${a.counts.mirrored ? ` (${a.counts.mirrored} mirrored)` : ''}, ${a.counts.concepts.toLocaleString()} named structures, ${a.counts.triangles.toLocaleString()} triangles. Licence: ${a.license}.` }));
+      if (a.ready && site) li.appendChild(el('p', { text: `${a.counts.concepts.toLocaleString()} estructuras con nombre. Licencia: ${a.license}.` }));
+      else if (a.ready) li.appendChild(el('p', { text: `${a.counts.elements.toLocaleString()} meshes${a.counts.mirrored ? ` (${a.counts.mirrored} mirrored)` : ''}, ${a.counts.concepts.toLocaleString()} named structures, ${a.counts.triangles.toLocaleString()} triangles. Licence: ${a.license}.` }));
       const actions = el('div', { class: 'row-actions' });
-      if (a.ready && !active) actions.appendChild(el('button', { type: 'button', class: 'primary', text: 'Show this atlas', onclick: () => runSafe(() => setActiveAtlas(a.id)) }));
+      if (a.ready && !active) actions.appendChild(el('button', { type: 'button', class: 'primary', text: site ? 'Abrir' : 'Show this atlas', onclick: () => runSafe(() => setActiveAtlas(a.id)) }));
       if (host) {
         const opts = () => ({ source: a.id, mirror: $('#optMirror').checked, commercialSafe: $('#optCommercial').checked });
         actions.appendChild(el('button', { type: 'button', class: a.ready ? '' : 'primary', text: a.ready ? 'Download again' : `Download (${a.size})`, onclick: () => runDataJob((p) => host.prepare(opts(), p)) }));

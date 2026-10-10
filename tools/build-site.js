@@ -23,6 +23,14 @@ const status = pipeline.status(dataDir);
 const installed = status.atlases.filter(a => a.ready).map(a => a.id);
 const wanted = (get('--atlases', installed.join(',')) || '').split(',').map(s => s.trim()).filter(Boolean);
 const bonesEs = args.includes('--bones-es');
+// Extra body systems published next to the bones atlas, each as its own lazily
+// loaded atlas (data/<id>/). --systems organs[,...]
+const SYSTEMS = {
+  organs: { id: 'zanatomy-organos', types: ['organ'], es: './es-organs', suffix: 'órganos', label: { organ: 'Órganos y vísceras' },
+    title: 'Órganos y vísceras', summary: 'Corazón, pulmones, aparato digestivo, urinario, genital masculino y glándulas endocrinas (Z-Anatomy, nombres en español).',
+    ui: { tab: 'Órganos', prompt: 'Haz clic en un órgano para identificarlo', search: 'Buscar un órgano (tecla /)', title: 'Atlas: órganos' } },
+};
+const systems = (get('--systems', '') || '').split(',').map(s => s.trim()).filter(Boolean);
 const uiDir = path.join(__dirname, '..', 'src', 'renderer');
 
 function copyDir(src, dst) {
@@ -95,11 +103,31 @@ function main() {
     totalBytes += bytes;
     const src = pipeline.SOURCES[id];
     manifest.atlases.push({
-      id, title: src.title, summary: src.summary, license: index.license, attribution: index.attribution,
+      id, title: bonesEs ? 'Huesos y dientes' : src.title, summary: bonesEs ? 'Esqueleto completo con nombres en español (Z-Anatomy).' : src.summary, license: index.license, attribution: index.attribution,
       name: index.name, version: index.version, counts: index.counts, size: `${(bytes / 1048576).toFixed(0)} MB`,
     });
     if (/NC/.test(index.license || '')) console.warn(`Note: ${id} is licensed ${index.license}. Only publish it on a non-commercial site, or rebuild with --commercial-safe.`);
     console.log(`${id}: ${index.parts.length} part(s), ${(bytes / 1048576).toFixed(0)} MB`);
+  }
+  for (const key of bonesEs ? systems : []) {
+    const S = SYSTEMS[key];
+    if (!S) { console.error(`Unknown system ${key}`); process.exit(1); }
+    const build = pipeline.atlasPaths(dataDir, 'zanatomy').build;
+    if (!fs.existsSync(path.join(build, 'index.json'))) { console.warn(`Skipping ${key}: zanatomy not built`); continue; }
+    const dst = path.join(dataOut, S.id);
+    fs.mkdirSync(dst, { recursive: true });
+    const r = require('./bones-only').subset(JSON.parse(fs.readFileSync(path.join(build, 'index.json'), 'utf8')), fs.readFileSync(path.join(build, 'meshes.bin')),
+      { types: S.types, translate: require(S.es).toSpanish, suffix: S.suffix, label: S.label, sideEs: true });
+    const tmp = path.join(dst, 'meshes.tmp');
+    fs.writeFileSync(tmp, r.bin);
+    r.index.parts = splitFile(tmp, dst, 'meshes');
+    fs.rmSync(tmp);
+    fs.writeFileSync(path.join(dst, 'index.json'), JSON.stringify(r.index));
+    const bytes = r.index.parts.reduce((t, p) => t + p.size, 0);
+    totalBytes += bytes;
+    manifest.atlases.push({ id: S.id, title: S.title, summary: S.summary, license: r.index.license, attribution: r.index.attribution,
+      name: r.index.name, version: r.index.version, counts: r.index.counts, size: `${(bytes / 1048576).toFixed(0)} MB`, ui: S.ui });
+    console.log(`${S.id}: ${r.index.parts.length} part(s), ${(bytes / 1048576).toFixed(0)} MB`);
   }
   fs.writeFileSync(path.join(dataOut, 'atlases.json'), JSON.stringify(manifest, null, 1));
   console.log(`Site written to ${out} (${(totalBytes / 1048576).toFixed(0)} MB of atlas data).`);
