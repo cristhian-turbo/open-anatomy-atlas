@@ -22,6 +22,7 @@ const partBytes = Math.round(Number(get('--part-mb', 90)) * 1048576);
 const status = pipeline.status(dataDir);
 const installed = status.atlases.filter(a => a.ready).map(a => a.id);
 const wanted = (get('--atlases', installed.join(',')) || '').split(',').map(s => s.trim()).filter(Boolean);
+const bonesEs = args.includes('--bones-es');
 const uiDir = path.join(__dirname, '..', 'src', 'renderer');
 
 function copyDir(src, dst) {
@@ -77,10 +78,19 @@ function main() {
     const build = pipeline.atlasPaths(dataDir, id).build;
     const dst = path.join(dataOut, id);
     fs.mkdirSync(dst, { recursive: true });
-    const index = JSON.parse(fs.readFileSync(path.join(build, 'index.json'), 'utf8'));
-    index.parts = splitFile(path.join(build, 'meshes.bin'), dst, 'meshes');
+    let index = JSON.parse(fs.readFileSync(path.join(build, 'index.json'), 'utf8'));
+    let meshFile = path.join(build, 'meshes.bin');
+    if (bonesEs) {
+      // Bones-only Spanish study build: skeleton meshes only, Spanish names.
+      const r = require('./bones-only').bonesOnly(index, fs.readFileSync(meshFile));
+      index = r.index;
+      meshFile = path.join(dst, 'meshes.tmp');
+      fs.writeFileSync(meshFile, r.bin);
+    }
+    index.parts = splitFile(meshFile, dst, 'meshes');
+    if (bonesEs) fs.rmSync(meshFile);
     fs.writeFileSync(path.join(dst, 'index.json'), JSON.stringify(index));
-    if (fs.existsSync(zGlossary)) fs.copyFileSync(zGlossary, path.join(dst, 'glossary.json'));
+    if (!bonesEs && fs.existsSync(zGlossary)) fs.copyFileSync(zGlossary, path.join(dst, 'glossary.json'));
     const bytes = index.parts.reduce((t, p) => t + p.size, 0);
     totalBytes += bytes;
     const src = pipeline.SOURCES[id];

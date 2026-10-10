@@ -21,8 +21,8 @@ concurrency:
 env:
   # Which atlases to publish (comma-separated: bp3d43, bp3d40, zanatomy).
   # Override without editing this file: Settings > Secrets and variables > Actions > Variables.
-  SITE_ATLASES: ${{ vars.SITE_ATLASES || 'bp3d43,zanatomy' }}
-  SITE_DEFAULT: ${{ vars.SITE_DEFAULT || 'bp3d43' }}
+  SITE_ATLASES: ${{ vars.SITE_ATLASES || 'zanatomy' }}
+  SITE_DEFAULT: ${{ vars.SITE_DEFAULT || 'zanatomy' }}
 
 jobs:
   build:
@@ -59,7 +59,7 @@ jobs:
           node tools/fetch-data.js --list
 
       - name: Build static site
-        run: node tools/build-site.js --out site --atlases "$SITE_ATLASES" --default "$SITE_DEFAULT" --skip-missing
+        run: node tools/build-site.js --out site --atlases "$SITE_ATLASES" --default "$SITE_DEFAULT" --skip-missing --bones-es
 
       - uses: actions/configure-pages@v5
 

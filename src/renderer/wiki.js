@@ -1,12 +1,12 @@
 // Fetches a short encyclopedic summary for a structure from Wikipedia
 // (CC BY-SA text, attributed with a link). Works only when online.
 
-const WIKI_API = 'https://en.wikipedia.org/w/api.php';
+const WIKI_API = 'https://es.wikipedia.org/w/api.php';
 const wikiCache = new Map();
 
 function wikiQueryName(name) {
   return name
-    .replace(/\b(left|right)\b/gi, '')
+    .replace(/\s*\((lado [a-z]+|[^)]*)\)/gi, '')
     .replace(/\(\s*\)/g, '')
     .replace(/\s+/g, ' ')
     .trim();
@@ -31,13 +31,14 @@ async function wikiFetch(params) {
   }
 }
 
-async function wikiSummary(name) {
+async function wikiSummary(name, en) {
   const q = wikiQueryName(name);
   if (!q) return null;
   if (wikiCache.has(q)) return wikiCache.get(q);
   const job = (async () => {
     let page = await wikiFetch({ titles: q });
-    if (!page) page = await wikiFetch({ generator: 'search', gsrlimit: '1', gsrsearch: `${q} anatomy` });
+    if (!page) page = await wikiFetch({ generator: 'search', gsrlimit: '1', gsrsearch: `${q} hueso anatomía` });
+    if (!page && en) page = await wikiFetch({ generator: 'search', gsrlimit: '1', gsrsearch: `${en.replace(/\b(left|right)\b/gi, '').trim()} hueso` });
     if (!page) return null;
     return { title: page.title, extract: page.extract, url: page.fullurl, thumb: page.thumbnail && page.thumbnail.source };
   })();

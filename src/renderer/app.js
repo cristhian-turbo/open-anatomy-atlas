@@ -20,7 +20,7 @@
     return n;
   };
   const cssColor = (rgb) => `rgb(${rgb.map(v => Math.round(v * 255)).join(',')})`;
-  const plural = (n, w) => `${n.toLocaleString()} ${w}${n === 1 ? '' : 's'}`;
+  const plural = (n, w) => `${n.toLocaleString()} ${n === 1 ? w : (w.endsWith('l') ? w + 'es' : w + 's')}`;
 
   // Layers that cover everything else start switched off.
   const HIDDEN_BY_DEFAULT = new Set(['skin', 'fascia']);
@@ -67,7 +67,7 @@
     const parts = index.parts || [{ file: 'meshes.bin', size: index.buffers.indices[0] + index.buffers.indices[1] }];
     const total = parts.reduce((t, p) => t + p.size, 0);
     let got = 0;
-    const tick = (k) => { got += k; showLoading(`Loading ${index.name} ${index.version}: ${(got / 1048576).toFixed(0)} of ${(total / 1048576).toFixed(0)} MB`, got / total); };
+    const tick = (k) => { got += k; showLoading(`Cargando ${index.name}: ${(got / 1048576).toFixed(0)} de ${(total / 1048576).toFixed(0)} MB`, got / total); };
     tick(0);
     const pieces = await Promise.all(parts.map(async (p) => {
       const res = await fetch(base + p.file, { cache: 'no-cache' });
@@ -168,7 +168,7 @@
       if (on && userHidden[i]) hidden++;
     });
     renderer.requestRender();
-    $('#hiddenNote').textContent = hidden ? `${plural(hidden, 'structure')} hidden by you.` : 'Click a layer to show or hide it.';
+    $('#hiddenNote').textContent = hidden ? `Ocultaste ${plural(hidden, 'estructura')}.` : 'Haz clic en una capa para mostrarla u ocultarla.';
     $('#btnShowHidden').hidden = !hidden;
     refreshEyes();
     $$('#layerList input').forEach(cb => { cb.checked = catOn[cb.dataset.cat] !== false; });
@@ -188,7 +188,7 @@
       const cb = el('input', { type: 'checkbox', class: 'toggle', id, 'data-cat': k });
       cb.checked = catOn[k] !== false;
       cb.addEventListener('change', () => { catOn[k] = cb.checked; applyVisibility(); });
-      const solo = el('button', { class: 'solo', text: 'Only', title: `Show only ${cat.label.toLowerCase()}`, onclick: () => {
+      const solo = el('button', { class: 'solo', text: 'Solo', title: `Mostrar solo ${cat.label.toLowerCase()}`, onclick: () => {
         for (const c of Object.keys(catOn)) catOn[c] = c === k;
         applyVisibility();
       } });
@@ -213,8 +213,8 @@
     const c = atlas.concepts[ci];
     const kids = atlas.children(ci, treeKind);
     const li = el('li', { role: 'treeitem', 'data-ci': ci });
-    const caret = el('button', { class: 'caret' + (kids.length ? '' : ' leaf'), text: '▸', 'aria-label': 'Expand', tabindex: kids.length ? '0' : '-1' });
-    const eye = el('button', { class: 'eye', html: EYE, title: 'Show or hide' });
+    const caret = el('button', { class: 'caret' + (kids.length ? '' : ' leaf'), text: '▸', 'aria-label': 'Expandir', tabindex: kids.length ? '0' : '-1' });
+    const eye = el('button', { class: 'eye', html: EYE, title: 'Mostrar u ocultar' });
     const label = el('button', { class: 'label', text: atlas.displayName(ci), title: atlas.displayName(ci) });
     const row = el('div', { class: 'row' }, [caret, eye, label, el('span', { class: 'cnt', text: c.el.length > 1 ? c.el.length : '' })]);
     li.appendChild(row);
@@ -330,7 +330,7 @@
     const c = atlas.concepts[ci];
     $('#tagName').textContent = atlas.displayName(ci);
     const fma = atlas.fmaLabel(ci);
-    $('#tagId').textContent = fma ? `Foundational Model of Anatomy ID ${fma.slice(4)}` : (atlas.isDemo ? 'Demo mannequin part' : '');
+    $('#tagId').textContent = fma ? `ID en Foundational Model of Anatomy: ${fma.slice(4)}` : (atlas.isDemo ? 'Demo mannequin part' : '');
     $('#tagId').hidden = !$('#tagId').textContent;
     const gl = atlas.glossaryOf(ci);
     $('#tagLatin').textContent = gl && gl.la ? gl.la : '';
@@ -341,7 +341,7 @@
     const cat = atlas.categoryOf(ci);
     $('#tagSwatch').style.background = cssColor(atlas.categories[cat].color);
     $('#tagCat').textContent = atlas.categories[cat].label;
-    $('#tagCount').textContent = c.el.length > 1 ? `(${plural(c.el.length, 'part')})` : '';
+    $('#tagCount').textContent = c.el.length > 1 ? `(${plural(c.el.length, 'parte')})` : '';
     const path = $('#tagPath');
     path.innerHTML = '';
     for (const p of atlas.breadcrumb(ci, 'partof')) {
@@ -361,22 +361,22 @@
     if (gl && gl.def && gl.def.text) {
       // Offline definition shipped with Z-Anatomy (from Wikipedia, CC BY-SA).
       text.textContent = gl.def.text;
-      if (gl.def.url) { link.href = gl.def.url; link.textContent = 'Read the full article on Wikipedia'; link.hidden = false; }
-      src.textContent = 'Definition from the Z-Anatomy glossary (text from Wikipedia, CC BY-SA).';
+      if (gl.def.url) { link.href = gl.def.url; link.textContent = 'Leer el artículo completo en Wikipedia'; link.hidden = false; }
+      src.textContent = 'Definición del glosario de Z-Anatomy (texto de Wikipedia, CC BY-SA).';
       return;
     }
-    text.textContent = 'Looking up a description\u2026';
+    text.textContent = 'Buscando una descripción\u2026';
     try {
-      const s = await wikiSummary(atlas.concepts[ci].name);
+      const s = await wikiSummary(atlas.concepts[ci].name, atlas.concepts[ci].en);
       if (tok !== wikiToken) return;
-      if (!s) { text.textContent = 'Wikipedia has no summary matching this structure\u2019s name.'; return; }
+      if (!s) { text.textContent = 'Wikipedia no tiene un resumen para esta estructura.'; return; }
       text.textContent = s.extract;
       link.href = s.url;
-      link.textContent = `Read \u201C${s.title}\u201D on Wikipedia (text CC BY-SA)`;
+      link.textContent = `Leer \u201C${s.title}\u201D en Wikipedia (texto CC BY-SA)`;
       link.hidden = false;
       if (s.thumb) { img.src = s.thumb; img.alt = s.title; img.hidden = false; }
     } catch (_) {
-      if (tok === wikiToken) text.textContent = 'Connect to the internet to see a short description from Wikipedia.';
+      if (tok === wikiToken) text.textContent = 'Conéctate a internet para ver una descripción de Wikipedia.';
     }
   }
 
@@ -402,7 +402,7 @@
     ul.innerHTML = '';
     if (!q) { ul.hidden = true; $('#search').setAttribute('aria-expanded', 'false'); return; }
     results = atlas.search(q, 60);
-    if (!results.length) ul.appendChild(el('li', { class: 'none', text: 'No structure with that name' }));
+    if (!results.length) ul.appendChild(el('li', { class: 'none', text: 'Ningún hueso con ese nombre' }));
     results.forEach((ci, i) => {
       const cat = atlas.categories[atlas.categoryOf(ci)];
       const li = el('li', { role: 'option', 'aria-selected': i === active ? 'true' : 'false' }, [
@@ -482,7 +482,7 @@
 
   function quizStart() {
     const pool = quizPool();
-    if (pool.length < 4) { $('#quizSetupMsg').textContent = 'Show at least four named structures to start a quiz.'; return; }
+    if (pool.length < 4) { $('#quizSetupMsg').textContent = 'Muestra al menos cuatro estructuras para empezar el cuestionario.'; return; }
     quiz.type = $$('input[name="qtype"]').find(r => r.checked).value;
     quiz.pool = shuffle(pool);
     quiz.total = Math.min(+$('#qcount').value, pool.length);
@@ -495,18 +495,18 @@
     quiz.cur = quiz.pool[quiz.i];
     quiz.answered = false;
     const name = atlas.displayName(quiz.cur);
-    $('#quizProgress').textContent = `Question ${quiz.i + 1} of ${quiz.total}, ${quiz.score} correct so far`;
+    $('#quizProgress').textContent = `Pregunta ${quiz.i + 1} de ${quiz.total}, ${quiz.score} correctas hasta ahora`;
     $('#quizFeedback').textContent = ''; $('#quizFeedback').className = 'quiz-feedback';
     $('#quizNext').hidden = true; $('#quizSkip').hidden = false;
     renderer.selected.fill(0);
     const opts = $('#quizOptions');
     opts.innerHTML = '';
     if (quiz.type === 'find') {
-      $('#quizPrompt').textContent = `Click the ${name.charAt(0).toLowerCase() + name.slice(1)}`;
+      $('#quizPrompt').textContent = `Haz clic en: ${name}`;
       quizXray(false);
       renderer.frame(atlas.index.bbox);
     } else {
-      $('#quizPrompt').textContent = 'What is the highlighted structure?';
+      $('#quizPrompt').textContent = '¿Cuál es la estructura resaltada?';
       for (const e of atlas.concepts[quiz.cur].el) renderer.selected[e] = 1;
       quizXray(true);
       frameWithContext(atlas.concepts[quiz.cur].el, 2);
@@ -535,25 +535,25 @@
     quiz.answered = true;
     const fb = $('#quizFeedback');
     const name = atlas.displayName(quiz.cur);
-    if (correct) { quiz.score++; fb.textContent = `Correct, that is the ${name.toLowerCase()}.`; fb.className = 'quiz-feedback right'; }
+    if (correct) { quiz.score++; fb.textContent = `¡Correcto! Es: ${name}.`; fb.className = 'quiz-feedback right'; }
     else { quiz.missed.push(quiz.cur); fb.textContent = wrongText; fb.className = 'quiz-feedback wrong'; }
     renderer.selected.fill(0);
     for (const e of atlas.concepts[quiz.cur].el) renderer.selected[e] = 1;
     quizXray(true);
     if (!correct) frameWithContext(atlas.concepts[quiz.cur].el, 2);
     renderer.requestRender();
-    $('#quizProgress').textContent = `Question ${quiz.i + 1} of ${quiz.total}, ${quiz.score} correct so far`;
+    $('#quizProgress').textContent = `Pregunta ${quiz.i + 1} de ${quiz.total}, ${quiz.score} correctas hasta ahora`;
     $('#quizNext').hidden = false; $('#quizSkip').hidden = true;
-    $('#quizNext').textContent = quiz.i + 1 >= quiz.total ? 'See results' : 'Next question';
+    $('#quizNext').textContent = quiz.i + 1 >= quiz.total ? 'Ver resultados' : 'Siguiente pregunta';
     $('#quizNext').focus();
   }
 
   function quizPick(elIdx) {
     if (quiz.answered || quiz.type !== 'find' || $('#quizRun').hidden) return;
-    if (elIdx < 0) { $('#quizFeedback').textContent = 'Click directly on a structure.'; return; }
+    if (elIdx < 0) { $('#quizFeedback').textContent = 'Haz clic directamente sobre un hueso.'; return; }
     const correct = atlas.concepts[quiz.cur].el.includes(elIdx);
     const clicked = atlas.displayName(atlas.conceptOf(elIdx)).toLowerCase();
-    quizResolve(correct, `That is the ${clicked}. The ${atlas.displayName(quiz.cur).toLowerCase()} is now highlighted.`);
+    quizResolve(correct, `Eso es: ${clicked}. Ahora se resalta: ${atlas.displayName(quiz.cur)}.`);
   }
 
   function quizAnswerName(ci, btn) {
@@ -577,11 +577,11 @@
     $('#quizRun').hidden = true; $('#quizDone').hidden = false;
     const asked = Math.min(quiz.total, quiz.i + (quiz.answered && quiz.i < quiz.total ? 1 : 0));
     const pct = asked ? Math.round((quiz.score / asked) * 100) : 0;
-    $('#quizScore').textContent = `${quiz.score} of ${asked} correct (${pct}%)`;
+    $('#quizScore').textContent = `${quiz.score} de ${asked} correctas (${pct}%)`;
     quizXray(false);
     const ul = $('#quizMissed');
     ul.innerHTML = '';
-    if (!quiz.missed.length) ul.appendChild(el('li', { text: 'Nothing to review. Well done.' }));
+    if (!quiz.missed.length) ul.appendChild(el('li', { text: 'Nada que repasar. ¡Muy bien!' }));
     for (const ci of [...new Set(quiz.missed)]) {
       ul.appendChild(el('li', {}, el('button', { text: atlas.displayName(ci), onclick: () => { setMode('explore'); select(ci, { focus: true }); } })));
     }
@@ -606,11 +606,11 @@
   function updateStatus() {
     const i = atlas.index;
     if (atlas.isDemo) {
-      $('#statusData').textContent = 'Demo mannequin: simplified shapes, not real anatomy.';
+      $('#statusData').textContent = 'Maniquí de demostración: formas simplificadas, no es anatomía real.';
       $('#statusGet').hidden = false;
       $('#statusAttr').textContent = '';
     } else {
-      $('#statusData').textContent = `${i.name} ${i.version}: ${plural(i.counts.elements, 'mesh').replace('meshs', 'meshes')}${i.counts.mirrored ? ` (${i.counts.mirrored} mirrored)` : ''}, ${plural(i.counts.concepts, 'named structure')}`;
+      $('#statusData').textContent = `${i.name}: ${plural(i.counts.elements, 'pieza')} 3D, ${plural(i.counts.concepts, 'estructura')} con nombre`;
       $('#statusGet').hidden = true;
       $('#statusAttr').innerHTML = '';
       $('#statusAttr').appendChild(el('a', { href: i.licenseUrl || i.sourceUrl, target: '_blank', rel: 'noopener', text: `${i.attribution}${i.license && /NC/.test(i.license) ? '. Non-commercial use only' : ''}` }));
@@ -812,7 +812,7 @@
     $('#btnHelp').addEventListener('click', () => $('#helpDialog').showModal());
     $('#btnAbout').addEventListener('click', openAbout);
     $('#statusLab').addEventListener('click', openAbout);
-    $('#statusLab').textContent = window.BRAND && window.BRAND.lab ? `Made by ${window.BRAND.lab}` : '';
+    $('#statusLab').textContent = window.BRAND && window.BRAND.lab ? `Basado en el trabajo de ${window.BRAND.lab}` : '';
     $('#btnShowHidden').addEventListener('click', () => { userHidden.fill(0); applyVisibility(); });
 
     $$('.tab').forEach(t => t.addEventListener('click', () => {
@@ -885,16 +885,16 @@
     const i = atlas && atlas.index;
     $('#aboutLogo').src = B.logo || 'brand/logo.png';
     $('#aboutLogo').alt = (B.lab || '') + ' logo';
-    $('#aboutTitle').textContent = 'Open Anatomy Atlas';
-    $('#aboutText').textContent = B.about || '';
+    $('#aboutTitle').textContent = 'Atlas de huesos';
+    $('#aboutText').textContent = 'Versión de estudio solo con huesos y nombres en español, derivada de Open Anatomy Atlas (Cognition Lab, Shiv Nadar University Chennai, licencia MIT).';
     $('#aboutWeb').href = B.website || '#'; $('#aboutWeb').textContent = (B.website || '').replace(/^https?:\/\//, '');
     $('#aboutEmail').href = 'mailto:' + (B.email || ''); $('#aboutEmail').textContent = B.email || '';
     $('#aboutRepo').href = B.repository || '#'; $('#aboutRepo').textContent = (B.repository || '').replace(/^https?:\/\//, '');
     $('#aboutRepo').closest('dd').previousElementSibling.hidden = !B.repository;
     $('#aboutRepo').closest('dd').hidden = !B.repository;
     $('#aboutVersion').textContent = B.version || '';
-    $('#aboutData').textContent = !i || atlas.isDemo ? 'No atlas loaded: you are viewing the built-in demo mannequin.'
-      : `${i.name} ${i.version}. ${i.attribution}. Licence: ${i.license}.`;
+    $('#aboutData').textContent = !i || atlas.isDemo ? 'No hay atlas cargado: estás viendo el maniquí de demostración.'
+      : `${i.name} ${i.version}. ${i.attribution}. Licencia: ${i.license}. Nombres en español: traducción propia de esta versión.`;
     $('#aboutDialog').showModal();
   }
 

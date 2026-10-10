@@ -1,3 +1,5 @@
+> **Fork: Atlas de huesos (español).** This fork publishes a bones-only study build with Spanish names and a Spanish interface for nursing students. Changes: `tools/bones-only.js` (filters the atlas to the skeletal system), `tools/es-bones.js` (Spanish names, own translation guided by the Latin Terminologia Anatomica names in Z-Anatomy), Spanish UI strings, and Spanish Wikipedia descriptions. Original project © Cognition Lab, Shiv Nadar University Chennai (MIT). 3D models: Z-Anatomy commercial-safe build (CC BY-SA 4.0), based on BodyParts3D © DBCLS (CC BY 4.0).
+
 # Open Anatomy Atlas
 
 An open-source 3D atlas of the human body for teaching and learning. You can rotate a whole body, peel it back system by system, click any structure to name it, cut sections like a CT slice, and quiz yourself.
