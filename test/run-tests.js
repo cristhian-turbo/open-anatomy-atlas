@@ -211,6 +211,22 @@ test('download: streams to disk with progress, skips existing', async () => {
   assert.ok(!called);
 });
 
+test('Spanish structure names and interface strings', () => {
+  const vm = require('vm');
+  const win = {};
+  const ctx = vm.createContext({ window: win, localStorage: { getItem: () => 'es', setItem() {} }, document: { querySelectorAll: () => [], getElementById: () => null, documentElement: {} } });
+  for (const f of ['locales/es-names.js', 'i18n.js']) vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'src', 'renderer', f), 'utf8'), ctx);
+  const { I18N } = win;
+  assert.strictEqual(I18N.lang, 'es');
+  assert.strictEqual(I18N.name('femur'), 'Fémur');
+  assert.strictEqual(I18N.name('left femur'), 'Fémur (lado izquierdo)');
+  assert.strictEqual(I18N.name('abdominal aorta'), 'Aorta abdominal');
+  assert.strictEqual(I18N.name('no such structure'), 'no such structure');
+  assert.strictEqual(I18N.t('parts', { n: 1 }), '(1 parte)');
+  assert.strictEqual(I18N.category('bone', 'Bones & teeth'), 'Huesos y dientes');
+  assert.strictEqual(I18N.t('missingKey'), 'missingKey');
+});
+
 (async () => {
   for (const [name, fn] of tests) {
     try { await fn(); passed++; console.log('  ok   ' + name); }

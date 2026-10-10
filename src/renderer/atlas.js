@@ -21,8 +21,15 @@ class Atlas {
     this.index = index;
     this.elements = index.elements;
     this.concepts = index.concepts;
-    this.categories = index.categories || DEFAULT_CATEGORIES;
-    this.lower = this.concepts.map(c => (c.side ? `${c.name} (${c.side})` : c.name).toLowerCase());
+    const cats = index.categories || DEFAULT_CATEGORIES;
+    this.categories = {};
+    for (const [k, v] of Object.entries(cats)) this.categories[k] = { ...v, label: I18N.category(k, v.label) };
+    // Search matches the English name and, in another language, the translated one too.
+    this.lower = this.concepts.map((c, i) => {
+      const en = c.side ? `${c.name} (${c.side})` : c.name;
+      const shown = this.displayName(i);
+      return (shown.toLowerCase() === en.toLowerCase() ? en : `${en} ${shown}`).toLowerCase();
+    });
     this.catCount = {};
     for (const e of this.elements) this.catCount[e.t] = (this.catCount[e.t] || 0) + 1;
   }
@@ -33,7 +40,8 @@ class Atlas {
 
   displayName(ci) {
     const c = this.concepts[ci];
-    const n = c.side ? `${c.name} (${c.side})` : c.name;
+    const name = I18N.name(c.name);
+    const n = c.side ? `${name} (${I18N.side(c.side)})` : name;
     return n.charAt(0).toUpperCase() + n.slice(1);
   }
 
