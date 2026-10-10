@@ -148,7 +148,8 @@
     renderer.setAtlas(data.index, data.bin);
     userHidden = new Uint8Array(atlas.elements.length);
     catOn = {};
-    for (const k of Object.keys(atlas.categories)) catOn[k] = !HIDDEN_BY_DEFAULT.has(k);
+    const solo = Object.keys(atlas.categories).length === 1; // a one-layer atlas (e.g. fascias) shows its layer
+    for (const k of Object.keys(atlas.categories)) catOn[k] = solo || !HIDDEN_BY_DEFAULT.has(k);
     atlas.elements.forEach((e, i) => {
       const base = (atlas.categories[e.t] || atlas.categories.organ).color;
       const spread = e.t === 'artery' || e.t === 'vein' || e.t === 'nervous' ? 0.06 : 0.13;
@@ -793,7 +794,7 @@
 
   function resetAll() {
     userHidden.fill(0);
-    for (const k of Object.keys(catOn)) catOn[k] = !HIDDEN_BY_DEFAULT.has(k);
+    for (const k of Object.keys(catOn)) catOn[k] = Object.keys(catOn).length === 1 || !HIDDEN_BY_DEFAULT.has(k);
     setXray(false);
     setPlane('none');
     if (mode === 'explore') clearSelection();
