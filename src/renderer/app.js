@@ -111,10 +111,84 @@
     return fetchAtlas(`data/${id}/`);
   }
 
+  // ---- body systems on the static site: the default atlas (bones) loads first;
+  // every other system is a separate atlas merged in when its layer is switched on.
+  // Merging only appends, so element and concept numbers already in use stay valid.
+  let loadedSystems = [];
+  const loadingSystems = new Set();
+  function mergeAtlases(list) {
+    if (list.length === 1) return { index: list[0].index, bin: list[0].bin };
+    let nv = 0, ni = 0;
+    for (const { index: x } of list) { nv += x.buffers.positions[1] / 4; ni += x.buffers.indices[1] / 4; }
+    const nn = nv; // 3 normal components per vertex, like positions
+    const nBytes = Math.ceil(nn * 2 / 4) * 4;
+    const buf = new ArrayBuffer(nv * 4 + nBytes + ni * 4);
+    const P = new Float32Array(buf, 0, nv), N = new Int16Array(buf, nv * 4, nn), I = new Uint32Array(buf, nv * 4 + nBytes, ni);
+    const first = list[0].index;
+    const out = { ...first, categories: {}, elements: [], concepts: [], roots: { partof: [], isa: [] },
+      bbox: [Infinity, Infinity, Infinity, -Infinity, -Infinity, -Infinity], counts: { elements: 0, concepts: 0, triangles: 0, vertices: 0, mirrored: 0 } };
+    let vo = 0, io = 0, co = 0;
+    for (const { index: x, bin } of list) {
+      const [po, pl] = x.buffers.positions, [nO] = x.buffers.normals, [iO, il] = x.buffers.indices;
+      P.set(new Float32Array(bin, po, pl / 4), vo * 3);
+      N.set(new Int16Array(bin, nO, pl / 4), vo * 3); // source normals may carry 2 bytes of padding
+      const src = new Uint32Array(bin, iO, il / 4), base = vo;
+      for (let k = 0; k < src.length; k++) I[io + k] = src[k] + base;
+      Object.assign(out.categories, x.categories);
+      const eo = out.elements.length, cOff = co, io0 = io;
+      for (const e of x.elements) out.elements.push({ ...e, o: e.o + io0, c: e.c + cOff });
+      const sh = l => (l || []).map(v => v + cOff);
+      for (const c of x.concepts) out.concepts.push({ ...c, pp: sh(c.pp), pc: sh(c.pc), ip: sh(c.ip), ic: sh(c.ic), el: (c.el || []).map(v => v + eo) });
+      out.roots.partof.push(...sh(x.roots.partof)); out.roots.isa.push(...sh(x.roots.isa));
+      for (let a = 0; a < 3; a++) { out.bbox[a] = Math.min(out.bbox[a], x.bbox[a]); out.bbox[a + 3] = Math.max(out.bbox[a + 3], x.bbox[a + 3]); }
+      for (const k of Object.keys(out.counts)) out.counts[k] += (x.counts && x.counts[k]) || 0;
+      vo += pl / 12; io += il / 4; co += x.concepts.length;
+    }
+    out.buffers = { positions: [0, nv * 4], normals: [nv * 4, nn * 2], indices: [nv * 4 + nBytes, ni * 4] };
+    delete out.parts;
+    return { index: out, bin: buf };
+  }
+  async function addSystem(id) {
+    if (loadingSystems.has(id) || loadedSystems.some(s => s.id === id)) return;
+    loadingSystems.add(id);
+    buildLayers();
+    try {
+      const data = await fetchAtlas(`data/${id}/`);
+      loadedSystems.push({ id, ...data });
+      const merged = mergeAtlases(loadedSystems);
+      const cam = { ...renderer.camera, target: renderer.camera.target.slice() };
+      const sel = selection, oldHidden = userHidden, oldSelected = renderer.selected;
+      atlas = new Atlas(merged.index);
+      renderer.setAtlas(merged.index, merged.bin);
+      Object.assign(renderer.camera, cam); renderer.anim = null;
+      userHidden = new Uint8Array(atlas.elements.length); userHidden.set(oldHidden);
+      renderer.selected.set(oldSelected);
+      for (const k of Object.keys(data.index.categories)) catOn[k] = true;
+      colorize();
+      selection = sel;
+      buildLayers(); buildTree(); applyVisibility(); updateStatus();
+      if (sel < 0) showInspector();
+    } catch (e) {
+      console.error(e);
+      showLoading('No se pudo cargar el sistema: ' + e.message, null);
+      setTimeout(() => { $('#loading').hidden = true; }, 4000);
+    } finally {
+      loadingSystems.delete(id);
+      $('#loading').hidden = true;
+      buildLayers();
+    }
+  }
+
   async function loadBest() {
     site = await loadSiteManifest();
     if (site) {
-      try { return await loadSiteAtlas(pickSiteAtlas()); } catch (e) { console.error(e); }
+      try {
+        const id = site.atlases.some(a => a.id === site.default) ? site.default : site.atlases[0].id;
+        const data = await fetchAtlas(`data/${id}/`);
+        siteAtlas = id;
+        loadedSystems = [{ id, ...data }];
+            return data;
+      } catch (e) { console.error(e); }
     }
     const bases = host ? [host.dataBase] : (location.protocol.startsWith('http') ? ['data/'] : []);
     for (const base of bases) {
@@ -138,7 +212,18 @@
     const a = site && site.atlases.find(x => x.id === siteAtlas), u = (a && a.ui) || uiDefaults;
     tab.textContent = u.tab; if (prompt) prompt.textContent = u.prompt; search.placeholder = u.search; search.setAttribute('aria-label', u.search);
     document.title = u.title; $('.brand span') && ($('.brand span').textContent = u.title);
-    $('#btnData').hidden = !(site && site.atlases.length > 1);
+    $('#btnData').hidden = true; // systems are switched on from the layer list
+  }
+
+  function colorize() {
+    const fallback = { color: [0.80, 0.50, 0.52] };
+    atlas.elements.forEach((e, i) => {
+      const base = (atlas.categories[e.t] || atlas.categories.organ || fallback).color;
+      const spread = e.t === 'artery' || e.t === 'vein' || e.t === 'nervous' ? 0.06 : 0.13;
+      const f = 1 - spread + 2 * spread * hash(e.k);
+      renderer.setColor(i, base.map(v => Math.min(1, v * f)));
+    });
+    renderer.requestRender();
   }
 
   function useAtlas(data) {
@@ -150,12 +235,7 @@
     catOn = {};
     const solo = Object.keys(atlas.categories).length === 1; // a one-layer atlas (e.g. fascias) shows its layer
     for (const k of Object.keys(atlas.categories)) catOn[k] = solo || !HIDDEN_BY_DEFAULT.has(k);
-    atlas.elements.forEach((e, i) => {
-      const base = (atlas.categories[e.t] || atlas.categories.organ).color;
-      const spread = e.t === 'artery' || e.t === 'vein' || e.t === 'nervous' ? 0.06 : 0.13;
-      const f = 1 - spread + 2 * spread * hash(e.k);
-      renderer.setColor(i, base.map(v => Math.min(1, v * f)));
-    });
+    colorize();
     selection = -1;
     renderer.selected.fill(0);
     $('#mirrorToggleRow').hidden = !atlas.elements.some(e => e.m);
@@ -185,7 +265,7 @@
     $('#hiddenNote').textContent = hidden ? `Ocultaste ${plural(hidden, 'estructura')}.` : 'Haz clic en una capa para mostrarla u ocultarla.';
     $('#btnShowHidden').hidden = !hidden;
     refreshEyes();
-    $$('#layerList input').forEach(cb => { cb.checked = catOn[cb.dataset.cat] !== false; });
+    $$('#layerList input[data-cat]').forEach(cb => { cb.checked = catOn[cb.dataset.cat] !== false; });
   }
 
   function ensureVisible(els) {
@@ -208,6 +288,17 @@
       } });
       const sw = el('span', { class: 'swatch' }); sw.style.background = cssColor(cat.color);
       list.appendChild(el('li', {}, [cb, el('label', { for: id, class: 'name' }, [sw, document.createTextNode(' ' + cat.label)]), el('span', { class: 'count', text: n.toLocaleString() }), solo]));
+    }
+    // Systems not downloaded yet: switching one on downloads it and adds it to the view.
+    if (site) for (const a of site.atlases) {
+      if (loadedSystems.some(s => s.id === a.id)) continue;
+      const busy = loadingSystems.has(a.id);
+      const id = 'sys-' + a.id;
+      const cb = el('input', { type: 'checkbox', class: 'toggle', id });
+      cb.checked = busy; cb.disabled = busy;
+      cb.addEventListener('change', () => { if (cb.checked) addSystem(a.id); });
+      list.appendChild(el('li', { class: 'pending' }, [cb, el('label', { for: id, class: 'name', text: a.title }),
+        el('span', { class: 'size', text: busy ? 'cargando…' : a.size })]));
     }
   }
 
@@ -744,13 +835,34 @@
     let drag = null;
     let hoverTimer = 0;
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+    // Touch: one finger rotates (or moves, with the pad in "Mover" mode), two fingers pinch to zoom and drag to move.
+    const touches = new Map();
+    let pinch = null;
+    const pinchState = () => {
+      const [a, b] = [...touches.values()];
+      return { d: Math.hypot(a.x - b.x, a.y - b.y), x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    };
     canvas.addEventListener('pointerdown', (e) => {
+      if (e.pointerType === 'touch') {
+        touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        if (touches.size === 2) { pinch = pinchState(); drag = null; canvas.setPointerCapture(e.pointerId); return; }
+        if (touches.size > 2) return;
+      }
       canvas.focus({ preventScroll: true });
-      drag = { x: e.clientX, y: e.clientY, btn: e.button, pan: e.button !== 0 || e.shiftKey, moved: false };
+      drag = { x: e.clientX, y: e.clientY, btn: e.button, pan: e.button !== 0 || e.shiftKey || (e.pointerType === 'touch' && padPan), moved: false };
       canvas.setPointerCapture(e.pointerId);
       $('#hoverTip').hidden = true;
     });
     canvas.addEventListener('pointermove', (e) => {
+      if (touches.has(e.pointerId)) touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pinch && touches.size === 2) {
+        const now = pinchState();
+        if (pinch.d > 0 && now.d > 0) renderer.zoom(pinch.d / now.d);
+        renderer.pan(now.x - pinch.x, now.y - pinch.y);
+        pinch = now;
+        return;
+      }
+      if (e.pointerType === 'touch' && !drag) return;
       if (drag) {
         const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
         if (!drag.moved && Math.hypot(dx, dy) < 3) return;
@@ -774,7 +886,14 @@
       }, atlas.index.counts.triangles > 4e6 ? 220 : 80);
     });
     canvas.addEventListener('pointerleave', () => { clearTimeout(hoverTimer); $('#hoverTip').hidden = true; });
+    const endTouch = (e) => {
+      touches.delete(e.pointerId);
+      if (pinch && touches.size < 2) { pinch = null; drag = null; return true; }
+      return false;
+    };
+    canvas.addEventListener('pointercancel', (e) => { endTouch(e); drag = null; canvas.classList.remove('dragging'); });
     canvas.addEventListener('pointerup', (e) => {
+      if (endTouch(e)) return;
       canvas.classList.remove('dragging');
       if (drag && !drag.moved && drag.btn === 0) {
         const i = renderer.pick(e.clientX, e.clientY);
@@ -792,9 +911,53 @@
     canvas.addEventListener('wheel', (e) => { e.preventDefault(); renderer.zoom(Math.exp(e.deltaY * 0.0012)); }, { passive: false });
   }
 
+  let padPan = false;
+  function bindCamPad() {
+    const step = 0.06; // fraction of the view per tick
+    const act = (k) => {
+      const h = Math.max(1, renderer.canvas.clientHeight), px = h * step;
+      if (k === 'in') renderer.zoom(0.9);
+      else if (k === 'out') renderer.zoom(1 / 0.9);
+      else if (padPan) renderer.pan({ left: px, right: -px }[k] || 0, { up: px, down: -px }[k] || 0);
+      else renderer.orbit({ left: -px * 0.5, right: px * 0.5 }[k] || 0, { up: px * 0.5, down: -px * 0.5 }[k] || 0);
+    };
+    $$('#camPad [data-cam]').forEach(b => {
+      const k = b.dataset.cam;
+      if (k === 'reset') { b.addEventListener('click', () => { renderer.camera.yaw = 0; renderer.camera.pitch = 0.05; renderer.frame(atlas.index.bbox); }); return; }
+      let timer = 0, rep = 0;
+      const stop = () => { clearTimeout(timer); clearInterval(rep); timer = rep = 0; };
+      b.addEventListener('pointerdown', (e) => {
+        e.preventDefault(); stop(); act(k);
+        timer = setTimeout(() => { rep = setInterval(() => act(k), 50); }, 300); // hold to keep moving
+      });
+      ['pointerup', 'pointerleave', 'pointercancel'].forEach(t => b.addEventListener(t, stop));
+      b.addEventListener('contextmenu', (e) => e.preventDefault());
+    });
+    $('#camMode').addEventListener('click', () => {
+      padPan = !padPan;
+      $('#camMode').textContent = padPan ? 'Mover' : 'Girar';
+      $('#camMode').setAttribute('aria-pressed', padPan ? 'true' : 'false');
+    });
+  }
+
+  // Phones: the side panels become bottom sheets opened from the bar under the view.
+  function openSheet(name) {
+    const cur = document.body.dataset.sheet;
+    if (!name || cur === name) { delete document.body.dataset.sheet; name = null; }
+    else {
+      document.body.dataset.sheet = name;
+      if (name !== 'info') $(`.tab[data-tab="${name}"]`).click();
+    }
+    $$('.mobile-bar [data-sheet]').forEach(b => b.classList.toggle('on', b.dataset.sheet === name));
+  }
+  function bindSheets() {
+    $$('.mobile-bar [data-sheet]').forEach(b => b.addEventListener('click', () => openSheet(b.dataset.sheet)));
+    $$('.sheet-close').forEach(b => b.addEventListener('click', () => openSheet(null)));
+  }
+
   function resetAll() {
     userHidden.fill(0);
-    for (const k of Object.keys(catOn)) catOn[k] = Object.keys(catOn).length === 1 || !HIDDEN_BY_DEFAULT.has(k);
+    if (!site) for (const k of Object.keys(catOn)) catOn[k] = Object.keys(catOn).length === 1 || !HIDDEN_BY_DEFAULT.has(k);
     setXray(false);
     setPlane('none');
     if (mode === 'explore') clearSelection();
@@ -940,14 +1103,19 @@
     }
     renderer.onFrame = positionPin;
     bindStage();
+    bindCamPad();
+    bindSheets();
     bindUI();
+    const hashAtStart = location.hash;
     useAtlas(await loadBest());
-    // Editing only the #atlas= hash (no reload) switches systems too.
-    window.addEventListener('hashchange', () => {
+    if (hashAtStart && site) { history.replaceState(null, '', location.pathname + location.search); location.hash = hashAtStart; }
+    // #atlas=<id> (old links) switches that system on next to the bones.
+    const fromHash = () => {
       if (!site) return;
       const id = (/[#&]atlas=([\w-]+)/.exec(location.hash) || [])[1];
-      if (id && id !== siteAtlas && site.atlases.some(a => a.id === id)) setActiveAtlas(id).catch(e => console.error(e));
-    });
+      if (id && site.atlases.some(a => a.id === id)) addSystem(id);
+    };
+    window.addEventListener('hashchange', fromHash);
     if (host && atlas.isDemo) openDataDialog();
     window.__atlasDebug = { get atlas() { return atlas; }, get renderer() { return renderer; }, select };
   }

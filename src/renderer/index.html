@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://upload.wikimedia.org; connect-src 'self' atlas: https://es.wikipedia.org">
 <title>Atlas de huesos</title>
 <link rel="icon" href="data:,">
@@ -43,6 +43,7 @@
   </header>
 
   <aside class="sidebar">
+    <button type="button" class="sheet-close" aria-label="Cerrar panel">Cerrar ✕</button>
     <nav class="tabs" role="tablist">
       <button class="tab on" data-tab="layers" role="tab">Capas</button>
       <button class="tab" data-tab="tree" role="tab">Huesos</button>
@@ -85,10 +86,25 @@
     <div id="pin" class="pin" hidden><span></span></div>
     <div id="hoverTip" class="hover-tip" hidden></div>
     <div id="loading" class="loading"><span id="loadingText">Cargando atlas</span><div class="bar"><div id="loadingBar"></div></div></div>
+    <div id="camPad" class="cam-pad" aria-label="Controles de cámara">
+      <div class="pad">
+        <button type="button" data-cam="up" aria-label="Arriba">▲</button>
+        <button type="button" data-cam="left" aria-label="Izquierda">◀</button>
+        <button type="button" id="camMode" class="mode" aria-pressed="false" title="Cambiar entre girar y mover">Girar</button>
+        <button type="button" data-cam="right" aria-label="Derecha">▶</button>
+        <button type="button" data-cam="down" aria-label="Abajo">▼</button>
+      </div>
+      <div class="zoom">
+        <button type="button" data-cam="in" aria-label="Acercar">+</button>
+        <button type="button" data-cam="out" aria-label="Alejar">−</button>
+        <button type="button" data-cam="reset" aria-label="Reiniciar vista" title="Reiniciar vista">⟲</button>
+      </div>
+    </div>
     <p class="stage-hint">Arrastra para girar · clic derecho o Mayús+arrastrar para mover · rueda para zoom · clic para identificar · doble clic para enfocar</p>
   </main>
 
   <aside class="inspector">
+    <button type="button" class="sheet-close" aria-label="Cerrar panel">Cerrar ✕</button>
     <div id="inspectEmpty" class="empty">
       <h2>Haz clic en un hueso para identificarlo</h2>
       <p>O búscalo por nombre. Usa Cortes para seccionar el esqueleto y Cuestionario para practicar.</p>
@@ -148,6 +164,13 @@
       </div>
     </section>
   </aside>
+
+  <nav class="mobile-bar" aria-label="Paneles">
+    <button type="button" data-sheet="layers">Sistemas</button>
+    <button type="button" data-sheet="tree">Lista</button>
+    <button type="button" data-sheet="sections">Cortes</button>
+    <button type="button" data-sheet="info">Info</button>
+  </nav>
 
   <footer class="statusbar">
     <span id="statusData"></span>
