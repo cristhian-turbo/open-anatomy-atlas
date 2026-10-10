@@ -24,11 +24,14 @@ const installed = status.atlases.filter(a => a.ready).map(a => a.id);
 const wanted = (get('--atlases', installed.join(',')) || '').split(',').map(s => s.trim()).filter(Boolean);
 const bonesEs = args.includes('--bones-es');
 // Extra body systems published next to the bones atlas, each as its own lazily
-// loaded atlas (data/<id>/). --systems organs[,...]
+// loaded atlas (data/<id>/). --systems organs,muscles
 const SYSTEMS = {
   organs: { id: 'zanatomy-organos', types: ['organ'], es: './es-organs', suffix: 'órganos', label: { organ: 'Órganos y vísceras' },
     title: 'Órganos y vísceras', summary: 'Corazón, pulmones, aparato digestivo, urinario, genital masculino y glándulas endocrinas (Z-Anatomy, nombres en español).',
     ui: { tab: 'Órganos', prompt: 'Haz clic en un órgano para identificarlo', search: 'Buscar un órgano (tecla /)', title: 'Atlas: órganos' } },
+  muscles: { id: 'zanatomy-musculos', types: ['muscle'], es: './es-muscles', suffix: 'músculos', label: { muscle: 'Músculos' },
+    title: 'Músculos', summary: 'Músculos de cabeza, cuello, tronco y extremidades, con bolsas, vainas y retináculos (Z-Anatomy, nombres en español).',
+    ui: { tab: 'Músculos', prompt: 'Haz clic en un músculo para identificarlo', search: 'Buscar un músculo (tecla /)', title: 'Atlas: músculos' } },
 };
 const systems = (get('--systems', '') || '').split(',').map(s => s.trim()).filter(Boolean);
 const uiDir = path.join(__dirname, '..', 'src', 'renderer');

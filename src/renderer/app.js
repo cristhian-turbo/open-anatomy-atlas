@@ -941,6 +941,12 @@
     bindStage();
     bindUI();
     useAtlas(await loadBest());
+    // Editing only the #atlas= hash (no reload) switches systems too.
+    window.addEventListener('hashchange', () => {
+      if (!site) return;
+      const id = (/[#&]atlas=([\w-]+)/.exec(location.hash) || [])[1];
+      if (id && id !== siteAtlas && site.atlases.some(a => a.id === id)) setActiveAtlas(id).catch(e => console.error(e));
+    });
     if (host && atlas.isDemo) openDataDialog();
     window.__atlasDebug = { get atlas() { return atlas; }, get renderer() { return renderer; }, select };
   }

@@ -59,7 +59,7 @@ jobs:
           node tools/fetch-data.js --list
 
       - name: Build static site
-        run: node tools/build-site.js --out site --atlases "$SITE_ATLASES" --default "$SITE_DEFAULT" --skip-missing --bones-es --systems organs
+        run: node tools/build-site.js --out site --atlases "$SITE_ATLASES" --default "$SITE_DEFAULT" --skip-missing --bones-es --systems organs,muscles
 
       - uses: actions/configure-pages@v5
 
