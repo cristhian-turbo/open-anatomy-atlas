@@ -3,13 +3,13 @@
 // Terminologia Anatomica Latin names shipped with Z-Anatomy).
 const BASE = {
   'human body': 'Cuerpo humano', 'skeletal system': 'Sistema esquelético', 'bones and teeth': 'Huesos y dientes',
-  'atlas (C1)': 'Atlas (C1)', 'axis (C2)': 'Axis (C2)', 'body of sternum': 'Cuerpo del esternón',
+  'atlas (C1)': 'Atlas (C1)', 'axis (C2)': 'Axis (C2, con apófisis odontoides)', 'body of sternum': 'Cuerpo del esternón',
   'manubrium of sternum': 'Manubrio del esternón', 'xiphoid process': 'Apófisis xifoides',
   'calcaneus': 'Calcáneo', 'capitate bone': 'Hueso grande (capitado)', 'clavicle': 'Clavícula', 'coccyx': 'Cóccix',
   'cuboid bone': 'Cuboides', 'ethmoid bone': 'Etmoides', 'anterior cells of ethmoid bone': 'Celdillas etmoidales anteriores',
   'middle cells of ethmoid bone': 'Celdillas etmoidales medias', 'posterior cells of ethmoid bone': 'Celdillas etmoidales posteriores',
   'femur': 'Fémur', 'fibula': 'Peroné (fíbula)', 'frontal bone': 'Hueso frontal', 'sinus of frontal bone': 'Seno frontal',
-  'hamate bone': 'Ganchoso (hamato)', 'hip bone': 'Coxal (hueso de la cadera)', 'humerus': 'Húmero', 'hyoid bone': 'Hioides',
+  'hamate bone': 'Ganchoso (hamato)', 'hip bone': 'Coxal (ilion, isquion y pubis)', 'humerus': 'Húmero', 'hyoid bone': 'Hioides',
   'incus': 'Yunque', 'malleus': 'Martillo', 'stapes': 'Estribo', 'inferior nasal concha bone': 'Cornete nasal inferior',
   'intermediate cuneiform bone': 'Cuneiforme intermedio', 'lateral cuneiform bone': 'Cuneiforme lateral', 'medial cuneiform bone': 'Cuneiforme medial',
   'lacrimal bone': 'Hueso lagrimal', 'lunate bone': 'Semilunar', 'mandible': 'Mandíbula', 'maxilla': 'Maxilar',
@@ -33,7 +33,8 @@ function core(n) {
   let m;
   if ((m = /^(distal|middle|proximal) phalanx of (\w+) finger of (hand|foot)$/.exec(n)))
     return `Falange ${PH[m[1]]} del ${(m[3] === 'hand' ? FINGER_H : TOE)[m[2]]} ${m[3] === 'hand' ? 'de la mano' : 'del pie'}`;
-  if ((m = /^(\w+) rib$/.exec(n))) return `${cap(ORD_F[m[1]] ? ORD_F[m[1]] : ORD_F2(m[1]))} costilla`;
+  if ((m = /^(\w+) rib$/.exec(n))) { const o = ['first','second','third','fourth','fifth','sixth','seventh','eighth','ninth','tenth','eleventh','twelfth'].indexOf(m[1]) + 1;
+    return `${cap(ORD_F[m[1]] ? ORD_F[m[1]] : ORD_F2(m[1]))} costilla (${o <= 7 ? 'verdadera' : o <= 10 ? 'falsa' : 'flotante'})`; }
   if ((m = /^(\w+) (metacarpal|metatarsal) bone$/.exec(n))) return `${cap(ORD_M[m[1]])} ${m[2] === 'metacarpal' ? 'metacarpiano' : 'metatarsiano'}`;
   if ((m = /^vertebra ([CTL])(\d+)$/.exec(n))) return `Vértebra ${VERT[m[1]]} ${m[1]}${m[2]}`;
   if ((m = /^(upper|lower) (.+)$/.exec(n))) {

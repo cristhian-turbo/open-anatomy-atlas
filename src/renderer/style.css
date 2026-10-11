@@ -318,3 +318,8 @@ dialog { width: min(640px, 94vw); max-height: 90vh; }
   .tree .row button { min-height: 34px; }
   .search-results { max-height: 45vh; }
 }
+
+.quick-bar { position: absolute; left: 50%; top: 10px; transform: translateX(-50%); display: flex; gap: 8px; z-index: 6; }
+.quick-bar button { min-height: 40px; padding: 0 16px; border-radius: 20px; border: 1px solid var(--line); background: rgba(37,45,55,0.92); color: var(--bone); font-size: 15px; font-weight: 600; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.quick-bar button:active { background: var(--film); color: var(--film-ink); }
+.quick-bar button[hidden] { display: none; }

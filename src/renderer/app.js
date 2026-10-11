@@ -264,6 +264,7 @@
     renderer.requestRender();
     $('#hiddenNote').textContent = hidden ? `Ocultaste ${plural(hidden, 'estructura')}.` : 'Haz clic en una capa para mostrarla u ocultarla.';
     $('#btnShowHidden').hidden = !hidden;
+    $('#qbShowAll').hidden = !hidden;
     refreshEyes();
     $$('#layerList input[data-cat]').forEach(cb => { cb.checked = catOn[cb.dataset.cat] !== false; });
   }
@@ -422,6 +423,7 @@
   }
 
   function showInspector() {
+    $('#qbHide').hidden = !(mode === 'explore' && selection >= 0);
     const quizOn = mode === 'quiz';
     $('#quiz').hidden = !quizOn;
     const has = !quizOn && selection >= 0;
@@ -1012,6 +1014,8 @@
     $('#actFocus').addEventListener('click', focusSelection);
     $('#actIsolate').addEventListener('click', isolateSelection);
     $('#actHide').addEventListener('click', hideSelection);
+    $('#qbHide').addEventListener('click', hideSelection);
+    $('#qbShowAll').addEventListener('click', () => { userHidden.fill(0); applyVisibility(); });
 
     const s = $('#search');
     s.addEventListener('input', () => { active = 0; renderResults(); });
