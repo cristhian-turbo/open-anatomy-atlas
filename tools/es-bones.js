@@ -5,27 +5,27 @@ const BASE = {
   'human body': 'Cuerpo humano', 'skeletal system': 'Sistema esquelético', 'bones and teeth': 'Huesos y dientes',
   'atlas (C1)': 'Atlas (C1)', 'axis (C2)': 'Axis (C2, con apófisis odontoides)', 'body of sternum': 'Cuerpo del esternón',
   'manubrium of sternum': 'Manubrio del esternón', 'xiphoid process': 'Apófisis xifoides',
-  'calcaneus': 'Calcáneo', 'capitate bone': 'Hueso grande (capitado)', 'clavicle': 'Clavícula', 'coccyx': 'Cóccix',
-  'cuboid bone': 'Cuboides', 'ethmoid bone': 'Etmoides', 'anterior cells of ethmoid bone': 'Celdillas etmoidales anteriores',
+  'calcaneus': 'Calcáneo (tarso)', 'capitate bone': 'Hueso grande (capitado, carpiano)', 'clavicle': 'Clavícula', 'coccyx': 'Cóccix',
+  'cuboid bone': 'Cuboides (tarso)', 'ethmoid bone': 'Etmoides', 'anterior cells of ethmoid bone': 'Celdillas etmoidales anteriores',
   'middle cells of ethmoid bone': 'Celdillas etmoidales medias', 'posterior cells of ethmoid bone': 'Celdillas etmoidales posteriores',
   'femur': 'Fémur', 'fibula': 'Peroné (fíbula)', 'frontal bone': 'Hueso frontal', 'sinus of frontal bone': 'Seno frontal',
-  'hamate bone': 'Ganchoso (hamato)', 'hip bone': 'Coxal (ilion, isquion y pubis)', 'humerus': 'Húmero', 'hyoid bone': 'Hioides',
+  'hamate bone': 'Ganchoso (hamato, con su gancho)', 'hip bone': 'Coxal (ilion, isquion y pubis)', 'humerus': 'Húmero', 'hyoid bone': 'Hioides',
   'incus': 'Yunque', 'malleus': 'Martillo', 'stapes': 'Estribo', 'inferior nasal concha bone': 'Cornete nasal inferior',
-  'intermediate cuneiform bone': 'Cuneiforme intermedio', 'lateral cuneiform bone': 'Cuneiforme lateral', 'medial cuneiform bone': 'Cuneiforme medial',
-  'lacrimal bone': 'Hueso lagrimal', 'lunate bone': 'Semilunar', 'mandible': 'Mandíbula', 'maxilla': 'Maxilar',
+  'intermediate cuneiform bone': 'Cuneiforme intermedio (tarso)', 'lateral cuneiform bone': 'Cuneiforme lateral (tarso)', 'medial cuneiform bone': 'Cuneiforme medial (tarso)',
+  'lacrimal bone': 'Hueso lagrimal', 'lunate bone': 'Semilunar (carpiano)', 'mandible': 'Mandíbula', 'maxilla': 'Maxilar',
   'nasal bone': 'Hueso nasal', 'navicular bone': 'Navicular (escafoides del pie)', 'occipital bone': 'Hueso occipital',
-  'palatine bone': 'Hueso palatino', 'parietal bone': 'Hueso parietal', 'patella': 'Rótula (patela)', 'pisiform bone': 'Pisiforme',
-  'radius': 'Radio', 'sacrum': 'Sacro', 'scaphoid bone': 'Escafoides', 'scapula': 'Escápula (omóplato)',
+  'palatine bone': 'Hueso palatino', 'parietal bone': 'Hueso parietal', 'patella': 'Rótula (patela)', 'pisiform bone': 'Pisiforme (carpiano)',
+  'radius': 'Radio', 'sacrum': 'Sacro', 'scaphoid bone': 'Escafoides (carpiano)', 'scapula': 'Escápula (omóplato)',
   'sesamoid bones of foot': 'Huesos sesamoideos del pie', 'sphenoid bone': 'Esfenoides', 'sinus of sphenoid bone': 'Seno esfenoidal',
-  'talus': 'Astrágalo (talus)', 'temporal bone': 'Hueso temporal', 'tibia': 'Tibia', 'trapezium bone': 'Trapecio',
-  'trapezoid bone': 'Trapezoide', 'triquetrum bone': 'Piramidal (triquetro)', 'ulna': 'Cúbito (ulna)', 'vomer': 'Vómer',
+  'talus': 'Astrágalo (talus, tarso)', 'temporal bone': 'Hueso temporal', 'tibia': 'Tibia', 'trapezium bone': 'Trapecio (carpiano)',
+  'trapezoid bone': 'Trapezoide (carpiano)', 'triquetrum bone': 'Piramidal (triquetro, carpiano)', 'ulna': 'Cúbito (ulna)', 'vomer': 'Vómer',
   'zygomatic bone': 'Hueso cigomático (malar)',
 };
 const ORD_M = { first: 'primer', second: 'segundo', third: 'tercer', fourth: 'cuarto', fifth: 'quinto', sixth: 'sexto', seventh: 'séptimo', eighth: 'octavo', ninth: 'noveno', tenth: 'décimo', eleventh: 'undécimo', twelfth: 'duodécimo' };
 const ORD_F = { first: 'primera', second: 'segunda', third: 'tercera', fourth: 'cuarta', fifth: 'quinta' };
 const FINGER_H = { first: 'pulgar (1.er dedo)', second: 'índice (2.º dedo)', third: 'medio (3.er dedo)', fourth: 'anular (4.º dedo)', fifth: 'meñique (5.º dedo)' };
 const TOE = { first: 'dedo gordo (1.er dedo)', second: '2.º dedo', third: '3.er dedo', fourth: '4.º dedo', fifth: '5.º dedo' };
-const PH = { distal: 'distal', middle: 'media', proximal: 'proximal' };
+const PH = { distal: 'distal (falangeta)', middle: 'media (falangina)', proximal: 'proximal (falange)' };
 const VERT = { C: 'cervical', T: 'torácica', L: 'lumbar' };
 
 function core(n) {
