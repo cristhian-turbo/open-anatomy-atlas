@@ -247,6 +247,7 @@
     showInspector();
     setPlane('none');
     updateStatus();
+    buildLandmarks();
     $('#loading').hidden = true;
   }
 
@@ -500,6 +501,84 @@
     pin.style.top = p[1] + 'px';
   }
 
+  // ======================= landmark pins =======================
+  // Bony landmarks (window.LANDMARKS): a dot on a point of a bone mesh. A pin is
+  // shown only while its bone is visible and that point is not covered by
+  // anything else; tapping it shows the name and a short description.
+
+  let pins = [], pinsOn = true, pinOpen = null, occTimer = 0, occOk = new Set();
+  function buildLandmarks() {
+    const layer = $('#lmLayer');
+    layer.textContent = '';
+    pinOpen = null; $('#lmCard').hidden = true;
+    const byKey = new Map(atlas.elements.map((e, i) => [e.k, i]));
+    pins = (window.LANDMARKS || []).filter(l => byKey.has(l.k)).map(l => {
+      const b = el('button', { type: 'button', class: 'lm', 'aria-label': l.name, title: l.name });
+      b.hidden = true;
+      const pin = { ...l, e: byKey.get(l.k), b, xy: null };
+      b.addEventListener('click', (ev) => { ev.stopPropagation(); openPin(pin); });
+      b.addEventListener('pointerdown', (ev) => ev.stopPropagation());
+      layer.append(b);
+      return pin;
+    });
+    occOk = new Set();
+    $('#qbPins').hidden = !pins.length;
+    scheduleOcclusion();
+  }
+  function openPin(pin) {
+    if (pinOpen) pinOpen.b.classList.remove('on');
+    pinOpen = pin;
+    pin.b.classList.add('on');
+    const card = $('#lmCard');
+    card.querySelector('h3').textContent = pin.name;
+    const ci = atlas.elements[pin.e].c;
+    card.querySelector('.lm-bone').textContent = atlas.displayName(ci);
+    card.querySelector('.lm-desc').textContent = pin.desc;
+    card.hidden = false;
+  }
+  function closePin() {
+    if (pinOpen) pinOpen.b.classList.remove('on');
+    pinOpen = null;
+    $('#lmCard').hidden = true;
+  }
+  const pinsActive = () => pinsOn && mode === 'explore' && pins.length;
+  function positionLandmarks(settled = false) {
+    if (!pins.length) return;
+    const stage = $('.stage'), W = stage.clientWidth, H = stage.clientHeight;
+    for (const p of pins) {
+      const show = pinsActive() && renderer.visible[p.e];
+      p.xy = show ? renderer.project(p.p) : null;
+      const ok = p.xy && p.xy[0] >= 0 && p.xy[1] >= 0 && p.xy[0] <= W && p.xy[1] <= H;
+      const vis = !!(ok && occOk.has(p.id));
+      p.b.hidden = !vis;
+      if (ok) p.b.style.transform = `translate(${p.xy[0]}px, ${p.xy[1]}px)`;
+      if (!vis && pinOpen === p) closePin();
+    }
+    if (!settled) scheduleOcclusion();
+  }
+  // Which pins are in front: one ID render, once the view has settled.
+  function scheduleOcclusion() {
+    clearTimeout(occTimer);
+    occTimer = setTimeout(() => {
+      if (!pinsActive()) return;
+      const cand = pins.filter(p => renderer.visible[p.e]);
+      const front = renderer.visibleMask(cand.map(p => p.p));
+      const next = new Set();
+      cand.forEach((p, i) => { if (front[i]) next.add(p.id); });
+      const changed = next.size !== occOk.size || [...next].some(id => !occOk.has(id));
+      occOk = next;
+      if (changed) positionLandmarks(true);
+    }, 140);
+  }
+  function setPins(on) {
+    pinsOn = on;
+    const b = $('#qbPins');
+    b.setAttribute('aria-pressed', String(on));
+    b.textContent = on ? 'Puntos: sí' : 'Puntos: no';
+    if (!on) closePin();
+    positionLandmarks();
+  }
+
   // ======================= search =======================
 
   let results = [], active = -1;
@@ -708,6 +787,7 @@
     if (m === 'quiz') { selection = -1; markTree(); quizReset(); }
     else { renderer.selected.fill(0); setXray(quiz.userXray); }
     showInspector();
+    renderer.requestRender();
   }
 
   function updateStatus() {
@@ -1016,6 +1096,8 @@
     $('#actHide').addEventListener('click', hideSelection);
     $('#qbHide').addEventListener('click', hideSelection);
     $('#qbShowAll').addEventListener('click', () => { userHidden.fill(0); applyVisibility(); });
+    $('#qbPins').addEventListener('click', () => setPins(!pinsOn));
+    $('#lmCard .lm-close').addEventListener('click', closePin);
 
     const s = $('#search');
     s.addEventListener('input', () => { active = 0; renderResults(); });
@@ -1105,7 +1187,7 @@
       $('#loading').textContent = e.message;
       return;
     }
-    renderer.onFrame = positionPin;
+    renderer.onFrame = () => { positionPin(); positionLandmarks(); };
     bindStage();
     bindCamPad();
     bindSheets();

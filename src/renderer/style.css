@@ -323,3 +323,17 @@ dialog { width: min(640px, 94vw); max-height: 90vh; }
 .quick-bar button { min-height: 40px; padding: 0 16px; border-radius: 20px; border: 1px solid var(--line); background: rgba(37,45,55,0.92); color: var(--bone); font-size: 15px; font-weight: 600; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 .quick-bar button:active { background: var(--film); color: var(--film-ink); }
 .quick-bar button[hidden] { display: none; }
+
+/* Bony landmark pins */
+.lm-layer { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.lm { position: absolute; left: 0; top: 0; width: 26px; height: 26px; margin: -13px 0 0 -13px; padding: 0; border: 0; background: none; pointer-events: auto; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.lm::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: #f2b134; border: 1.5px solid #3a2a06; box-shadow: 0 0 0 1px rgba(255,255,255,.55); }
+.lm:hover::before, .lm.on::before { width: 13px; height: 13px; background: #ffd36b; }
+.lm.on::before { background: #8fdbcc; border-color: #0d3b33; }
+.lm[hidden] { display: none; }
+.lm-card { position: absolute; left: 12px; right: auto; bottom: 64px; max-width: min(360px, calc(100% - 24px)); background: rgba(20,26,33,.94); color: #eef1f4; border: 1px solid rgba(255,255,255,.15); border-radius: 10px; padding: 10px 34px 10px 12px; box-shadow: 0 6px 24px rgba(0,0,0,.4); z-index: 6; }
+.lm-card h3 { margin: 0 0 2px; font-size: 15px; color: #ffd36b; }
+.lm-card .lm-bone { margin: 0 0 6px; font-size: 12px; opacity: .75; }
+.lm-card .lm-desc { margin: 0; font-size: 13px; line-height: 1.4; }
+.lm-card .lm-close { position: absolute; top: 4px; right: 4px; background: none; border: 0; color: inherit; font-size: 16px; padding: 6px; cursor: pointer; }
+#qbPins[aria-pressed="false"] { opacity: .7; }

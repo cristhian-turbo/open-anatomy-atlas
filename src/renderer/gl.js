@@ -59,6 +59,23 @@ void main() {
   o = vec4(uColor, 1.0);
 }`;
 
+// Distance from the eye, packed into RGB (24 bits), for landmark occlusion.
+const DIST_FS = `#version 300 es
+precision highp float;
+in vec3 vN;
+in vec3 vW;
+uniform vec3 uEye;
+uniform float uFar;
+uniform vec4 uClip;
+uniform bool uClipOn;
+out vec4 o;
+void main() {
+  if (uClipOn && dot(vec4(vW, 1.0), uClip) > 0.0) discard;
+  float d = clamp(length(vW - uEye) / uFar, 0.0, 1.0) * 16777215.0;
+  float r = floor(d / 65536.0), g = floor((d - r * 65536.0) / 256.0), b = d - r * 65536.0 - g * 256.0;
+  o = vec4(r, g, b, 255.0) / 255.0;
+}`;
+
 function compile(gl, type, src) {
   const s = gl.createShader(type);
   gl.shaderSource(s, src);
@@ -88,6 +105,7 @@ class AtlasRenderer {
     this.gl = gl;
     this.main = program(gl, VS, FS);
     this.pickProg = program(gl, VS, PICK_FS);
+    this.distProg = program(gl, VS, DIST_FS);
     this.camera = { yaw: 0, pitch: 0.05, dist: 3, target: [0, 0.9, 0], fov: 40 * Math.PI / 180 };
     this.clip = { on: false, plane: [0, -1, 0, 1] };
     this.xray = false;
@@ -352,6 +370,52 @@ class AtlasRenderer {
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     const k = px[0] | (px[1] << 8) | (px[2] << 16);
     return k ? k - 1 : -1;
+  }
+
+  // For each world point, whether it is in front: no visible surface lies
+  // clearly closer to the eye within r CSS pixels of it.
+  visibleMask(points, r = 1.5) {
+    const gl = this.gl;
+    if (!this.n || !points.length) return points.map(() => false);
+    this.pick(-1e9, -1e9); // makes sure the offscreen framebuffer exists at this size
+    const W = this.canvas.width, H = this.canvas.height;
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this._fbo);
+    gl.viewport(0, 0, W, H);
+    gl.clearColor(1, 1, 1, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.enable(gl.DEPTH_TEST);
+    gl.disable(gl.BLEND);
+    const { vp, eye } = this._matrices();
+    const far = this.camera.dist * 20 + 10;
+    this._setCommon(this.distProg, vp, eye);
+    gl.uniform1f(this.distProg.u.uFar, far);
+    gl.bindVertexArray(this.vao);
+    for (let i = 0; i < this.n; i++) {
+      if (!this.visible[i]) continue;
+      gl.drawElements(gl.TRIANGLES, this.elements[i].n, gl.UNSIGNED_INT, this.elements[i].o * 4);
+    }
+    const px = new Uint8Array(W * H * 4);
+    gl.readPixels(0, 0, W, H, gl.RGBA, gl.UNSIGNED_BYTE, px);
+    gl.bindVertexArray(null);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    const sx = W / Math.max(1, this.canvas.clientWidth), sy = H / Math.max(1, this.canvas.clientHeight);
+    const rr = Math.max(1, Math.round(r * sx));
+    return points.map(p => {
+      const xy = this.project(p);
+      if (!xy) return false;
+      const dp = Math.hypot(p[0] - eye[0], p[1] - eye[1], p[2] - eye[2]);
+      // Tolerance: about two pixels at that depth, at least 0.8 mm (thin plates such as the scapula).
+      const tol = Math.max(0.0008, 2 * (2 * dp * Math.tan(this.camera.fov / 2)) / Math.max(1, this.canvas.clientHeight));
+      const cx = Math.round(xy[0] * sx), cy = Math.round(H - xy[1] * sy);
+      let front = 0, n = 0;
+      for (let y = cy - rr; y <= cy + rr; y++) for (let x = cx - rr; x <= cx + rr; x++) {
+        if (x < 0 || y < 0 || x >= W || y >= H) continue;
+        const o = (y * W + x) * 4;
+        const d = ((px[o] * 65536 + px[o + 1] * 256 + px[o + 2]) / 16777215) * far;
+        n++; if (d >= dp - tol) front++;
+      }
+      return n > 0 && front * 3 >= n; // at least a third of the neighbourhood is not covered
+    });
   }
 
   // World point -> CSS pixel position inside the canvas.
