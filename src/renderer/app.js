@@ -405,6 +405,7 @@
     for (const e of els) renderer.selected[e] = 1;
     renderer.requestRender();
     showInspector();
+    renderLmList(); positionLandmarks();
     if (reveal) revealInTree(ci); else markTree();
     if (focus) focusSelection();
   }
@@ -415,6 +416,7 @@
     renderer.requestRender();
     markTree();
     showInspector();
+    renderLmList(); positionLandmarks();
   }
 
   function focusSelection() {
@@ -506,7 +508,12 @@
   // shown only while its bone is visible and that point is not covered by
   // anything else; tapping it shows the name and a short description.
 
-  let pins = [], pinsOn = true, pinOpen = null, occTimer = 0, occOk = new Set();
+  // Pins of the selected bone are always drawn: covered ones appear faded
+  // ("detrás") so internal landmarks such as the silla turca stay reachable.
+  // The landmark list (#lmPanel) is a side panel on tablets and a compact
+  // strip on phones; choosing one selects its bone and flies the camera there.
+
+  let pins = [], pinsOn = true, pinOpen = null, occTimer = 0, occOk = new Set(), lmListOpen = false;
   function buildLandmarks() {
     const layer = $('#lmLayer');
     layer.textContent = '';
@@ -514,6 +521,7 @@
     const byKey = new Map(atlas.elements.map((e, i) => [e.k, i]));
     pins = (window.LANDMARKS || []).filter(l => byKey.has(l.k)).map(l => {
       const b = el('button', { type: 'button', class: 'lm', 'aria-label': l.name, title: l.name });
+      b.append(el('span', { class: 'lm-tag', text: l.name }));
       b.hidden = true;
       const pin = { ...l, e: byKey.get(l.k), b, xy: null };
       b.addEventListener('click', (ev) => { ev.stopPropagation(); openPin(pin); });
@@ -523,7 +531,56 @@
     });
     occOk = new Set();
     $('#qbPins').hidden = !pins.length;
+    $('#qbList').hidden = !pins.length;
+    renderLmList();
     scheduleOcclusion();
+  }
+  const selEls = () => selection >= 0 ? new Set(atlas.concepts[selection].el) : new Set();
+  function renderLmList() {
+    const ul = $('#lmList');
+    if (!ul) return;
+    ul.textContent = '';
+    const sel = selEls();
+    const own = pins.filter(p => sel.has(p.e));
+    const list = own.length ? own : pins;
+    $('#lmPanelTitle').textContent = own.length ? `Puntos: ${atlas.displayName(selection)}` : 'Puntos de referencia';
+    let lastBone = -1;
+    for (const p of list) {
+      if (!own.length && p.e !== lastBone) {
+        lastBone = p.e;
+        ul.append(el('li', { class: 'lm-group', text: atlas.displayName(atlas.elements[p.e].c) }));
+      }
+      const li = el('li');
+      const btn = el('button', { type: 'button', class: 'lm-item' + (pinOpen === p ? ' on' : ''), text: p.name });
+      btn.addEventListener('click', () => focusPin(p));
+      li.append(btn);
+      ul.append(li);
+    }
+  }
+  function setLmList(open) {
+    lmListOpen = open && pins.length > 0;
+    $('#lmPanel').hidden = !lmListOpen;
+    $('#qbList').setAttribute('aria-pressed', String(lmListOpen));
+    document.body.classList.toggle('lm-list-open', lmListOpen);
+    if (lmListOpen) { if (!pinsOn) setPins(true); renderLmList(); }
+  }
+  // Select the pin's bone, make the rest see-through if the point is covered,
+  // and fly the camera to the point.
+  function focusPin(pin) {
+    const ci = atlas.elements[pin.e].c;
+    if (selection !== ci) select(ci, { reveal: false });
+    const b = atlas.bbox([pin.e]);
+    const size = Math.hypot(b[3] - b[0], b[4] - b[1], b[5] - b[2]);
+    const r = Math.max(0.035, Math.min(0.12, size * 0.6));
+    const aspect = Math.max(0.3, renderer.canvas.clientWidth / Math.max(1, renderer.canvas.clientHeight));
+    const fit = Math.min(renderer.camera.fov, 2 * Math.atan(Math.tan(renderer.camera.fov / 2) * aspect));
+    renderer._animateTo({ yaw: renderer.camera.yaw, pitch: renderer.camera.pitch, dist: r / Math.sin(fit / 2), target: pin.p.slice() });
+    openPin(pin);
+    setTimeout(() => {
+      const front = renderer.visibleMask([pin.p])[0];
+      if (!front && !renderer.xray) setXray(true);
+      scheduleOcclusion();
+    }, 520);
   }
   function openPin(pin) {
     if (pinOpen) pinOpen.b.classList.remove('on');
@@ -535,24 +592,32 @@
     card.querySelector('.lm-bone').textContent = atlas.displayName(ci);
     card.querySelector('.lm-desc').textContent = pin.desc;
     card.hidden = false;
+    renderLmList();
+    positionLandmarks(true);
   }
   function closePin() {
     if (pinOpen) pinOpen.b.classList.remove('on');
     pinOpen = null;
     $('#lmCard').hidden = true;
+    renderLmList();
   }
   const pinsActive = () => pinsOn && mode === 'explore' && pins.length;
   function positionLandmarks(settled = false) {
     if (!pins.length) return;
     const stage = $('.stage'), W = stage.clientWidth, H = stage.clientHeight;
+    const sel = selEls();
     for (const p of pins) {
       const show = pinsActive() && renderer.visible[p.e];
       p.xy = show ? renderer.project(p.p) : null;
       const ok = p.xy && p.xy[0] >= 0 && p.xy[1] >= 0 && p.xy[0] <= W && p.xy[1] <= H;
-      const vis = !!(ok && occOk.has(p.id));
+      const front = occOk.has(p.id);
+      const mine = sel.has(p.e) || pinOpen === p;
+      const vis = !!(ok && (front || mine));
       p.b.hidden = !vis;
+      p.b.classList.toggle('behind', vis && !front && !renderer.xray);
+      p.b.classList.toggle('mine', mine);
       if (ok) p.b.style.transform = `translate(${p.xy[0]}px, ${p.xy[1]}px)`;
-      if (!vis && pinOpen === p) closePin();
+      if (!ok && pinOpen === p && !renderer.anim) closePin();
     }
     if (!settled) scheduleOcclusion();
   }
@@ -565,9 +630,8 @@
       const front = renderer.visibleMask(cand.map(p => p.p));
       const next = new Set();
       cand.forEach((p, i) => { if (front[i]) next.add(p.id); });
-      const changed = next.size !== occOk.size || [...next].some(id => !occOk.has(id));
       occOk = next;
-      if (changed) positionLandmarks(true);
+      positionLandmarks(true);
     }, 140);
   }
   function setPins(on) {
@@ -575,7 +639,7 @@
     const b = $('#qbPins');
     b.setAttribute('aria-pressed', String(on));
     b.textContent = on ? 'Puntos: sí' : 'Puntos: no';
-    if (!on) closePin();
+    if (!on) { closePin(); if (lmListOpen) setLmList(false); }
     positionLandmarks();
   }
 
@@ -1097,6 +1161,8 @@
     $('#qbHide').addEventListener('click', hideSelection);
     $('#qbShowAll').addEventListener('click', () => { userHidden.fill(0); applyVisibility(); });
     $('#qbPins').addEventListener('click', () => setPins(!pinsOn));
+    $('#qbList').addEventListener('click', () => setLmList(!lmListOpen));
+    $('#lmPanelClose').addEventListener('click', () => setLmList(false));
     $('#lmCard .lm-close').addEventListener('click', closePin);
 
     const s = $('#search');

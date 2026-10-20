@@ -282,7 +282,7 @@ dialog { width: min(640px, 94vw); max-height: 90vh; }
 .layer-list li .size { color: var(--muted); font-size: 11.5px; }
 
 /* ---------- phones and narrow windows ---------- */
-@media (max-width: 760px) {
+@media (max-width: 1023px) {
   #app {
     height: 100vh; height: 100dvh;
     grid-template-columns: 1fr;
@@ -324,16 +324,52 @@ dialog { width: min(640px, 94vw); max-height: 90vh; }
 .quick-bar button:active { background: var(--film); color: var(--film-ink); }
 .quick-bar button[hidden] { display: none; }
 
-/* Bony landmark pins */
-.lm-layer { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
-.lm { position: absolute; left: 0; top: 0; width: 26px; height: 26px; margin: -13px 0 0 -13px; padding: 0; border: 0; background: none; pointer-events: auto; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-.lm::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: #f2b134; border: 1.5px solid #3a2a06; box-shadow: 0 0 0 1px rgba(255,255,255,.55); }
-.lm:hover::before, .lm.on::before { width: 13px; height: 13px; background: #ffd36b; }
-.lm.on::before { background: #8fdbcc; border-color: #0d3b33; }
+/* Bony landmark pins: 44px touch target around a clear dot */
+.lm-layer { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 4; }
+.lm { position: absolute; left: 0; top: 0; width: 44px; height: 44px; margin: -22px 0 0 -22px; padding: 0; border: 0; background: none; pointer-events: auto; cursor: pointer; display: flex; align-items: center; justify-content: center; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.lm::before { content: ""; width: 14px; height: 14px; border-radius: 50%; background: #f2b134; border: 2px solid #fff; box-shadow: 0 0 0 1.5px #3a2a06, 0 2px 6px rgba(0,0,0,.6); transition: transform .12s; }
+.lm.mine::before { background: #ffcc4d; }
+.lm.behind::before { background: rgba(242,177,52,.35); border-style: dashed; box-shadow: 0 0 0 1.5px rgba(58,42,6,.6); }
+.lm:hover::before { transform: scale(1.2); }
+.lm.on::before { width: 18px; height: 18px; background: #8fdbcc; border-color: #fff; box-shadow: 0 0 0 2px #0d3b33, 0 0 0 7px rgba(143,219,204,.35), 0 2px 8px rgba(0,0,0,.6); }
+.lm.on { z-index: 2; }
+.lm-tag { display: none; position: absolute; left: 50%; bottom: 36px; transform: translateX(-50%); white-space: nowrap; max-width: 60vw; overflow: hidden; text-overflow: ellipsis; padding: 3px 8px; border-radius: 6px; background: rgba(13,59,51,.95); color: #eafff9; font-size: 13px; font-weight: 600; pointer-events: none; }
+.lm.on .lm-tag { display: block; }
 .lm[hidden] { display: none; }
-.lm-card { position: absolute; left: 12px; right: auto; bottom: 64px; max-width: min(360px, calc(100% - 24px)); background: rgba(20,26,33,.94); color: #eef1f4; border: 1px solid rgba(255,255,255,.15); border-radius: 10px; padding: 10px 34px 10px 12px; box-shadow: 0 6px 24px rgba(0,0,0,.4); z-index: 6; }
-.lm-card h3 { margin: 0 0 2px; font-size: 15px; color: #ffd36b; }
+.lm-card { position: absolute; left: 12px; right: auto; bottom: 64px; max-width: min(360px, calc(100% - 24px)); max-height: 40%; overflow: auto; background: rgba(20,26,33,.94); color: #eef1f4; border: 1px solid rgba(255,255,255,.15); border-radius: 10px; padding: 10px 40px 10px 12px; box-shadow: 0 6px 24px rgba(0,0,0,.4); z-index: 6; }
+.lm-card h3 { margin: 0 0 2px; font-size: 16px; color: #ffd36b; }
 .lm-card .lm-bone { margin: 0 0 6px; font-size: 12px; opacity: .75; }
-.lm-card .lm-desc { margin: 0; font-size: 13px; line-height: 1.4; }
-.lm-card .lm-close { position: absolute; top: 4px; right: 4px; background: none; border: 0; color: inherit; font-size: 16px; padding: 6px; cursor: pointer; }
+.lm-card .lm-desc { margin: 0; font-size: 14px; line-height: 1.4; }
+.lm-card .lm-close, .lm-panel-close { position: absolute; top: 2px; right: 2px; width: 40px; height: 40px; background: none; border: 0; color: inherit; font-size: 17px; cursor: pointer; }
+/* Landmark list: side panel over the right edge of the view (tablet/desktop) */
+.lm-panel { position: absolute; top: 60px; right: 10px; bottom: 10px; width: min(300px, 42%); display: flex; flex-direction: column; background: rgba(20,26,33,.95); color: #eef1f4; border: 1px solid rgba(255,255,255,.15); border-radius: 12px; box-shadow: 0 6px 24px rgba(0,0,0,.4); z-index: 7; }
+.lm-panel[hidden] { display: none; }
+.lm-panel header { position: relative; padding: 10px 44px 8px 12px; border-bottom: 1px solid rgba(255,255,255,.1); flex: none; }
+.lm-panel h2 { margin: 0; font-size: 15px; color: #ffd36b; }
+.lm-panel-close { color: #eef1f4; }
+.lm-list { list-style: none; margin: 0; padding: 4px 0 8px; overflow: auto; flex: 1; -webkit-overflow-scrolling: touch; }
+.lm-list .lm-group { padding: 10px 12px 2px; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; opacity: .6; }
+.lm-item { display: block; width: 100%; min-height: 44px; padding: 8px 12px; text-align: left; border: 0; background: none; color: inherit; font-size: 15px; cursor: pointer; touch-action: manipulation; }
+.lm-item:active, .lm-item.on { background: rgba(143,219,204,.18); color: #8fdbcc; font-weight: 600; }
+body.lm-list-open .cam-pad { display: none; }
+body.lm-list-open .lm-card { right: auto; max-width: min(360px, calc(100% - min(300px, 42%) - 34px)); }
+#qbList[aria-pressed="true"] { background: var(--film); color: var(--film-ink); }
+/* Phones: the list becomes a horizontal strip of chips under the top buttons,
+   and the card a short strip at the bottom, so the model stays in view. */
+@media (max-width: 760px) {
+  .quick-bar { gap: 6px; top: 8px; }
+  .quick-bar button { min-height: 38px; padding: 0 12px; font-size: 14px; }
+  .lm-panel { top: 54px; left: 6px; right: 6px; bottom: auto; width: auto; border-radius: 10px; }
+  .lm-panel header { padding: 6px 40px 4px 10px; border: 0; }
+  .lm-panel h2 { font-size: 13px; }
+  .lm-panel-close { width: 36px; height: 32px; }
+  .lm-list { display: flex; gap: 6px; overflow-x: auto; overflow-y: hidden; padding: 2px 8px 8px; scrollbar-width: none; }
+  .lm-list::-webkit-scrollbar { display: none; }
+  .lm-list .lm-group { display: none; }
+  .lm-list li { flex: none; }
+  .lm-item { width: auto; min-height: 40px; padding: 0 14px; border-radius: 20px; background: rgba(255,255,255,.08); white-space: nowrap; font-size: 14px; }
+  .lm-card, body.lm-list-open .lm-card { left: 6px; right: 6px; bottom: 6px; max-width: none; max-height: 28%; padding: 8px 40px 8px 10px; }
+  .lm-card h3 { font-size: 15px; }
+  .lm-card .lm-desc { font-size: 13px; }
+}
 #qbPins[aria-pressed="false"] { opacity: .7; }

@@ -86,8 +86,9 @@
     <div id="pin" class="pin" hidden><span></span></div>
     <div id="hoverTip" class="hover-tip" hidden></div>
     <div id="loading" class="loading"><span id="loadingText">Cargando atlas</span><div class="bar"><div id="loadingBar"></div></div></div>
-    <div id="quickBar" class="quick-bar"><button type="button" id="qbHide" hidden>Ocultar</button><button type="button" id="qbShowAll" hidden>Mostrar todo</button><button type="button" id="qbPins" aria-pressed="true" hidden title="Mostrar u ocultar los puntos de referencia óseos">Puntos: sí</button></div>
+    <div id="quickBar" class="quick-bar"><button type="button" id="qbHide" hidden>Ocultar</button><button type="button" id="qbShowAll" hidden>Mostrar todo</button><button type="button" id="qbPins" aria-pressed="true" hidden title="Mostrar u ocultar los puntos de referencia óseos">Puntos: sí</button><button type="button" id="qbList" aria-pressed="false" hidden title="Lista de puntos de referencia">Lista</button></div>
     <div id="lmLayer" class="lm-layer"></div>
+    <section id="lmPanel" class="lm-panel" hidden aria-label="Puntos de referencia"><header><h2 id="lmPanelTitle">Puntos de referencia</h2><button type="button" id="lmPanelClose" class="lm-panel-close" aria-label="Cerrar lista">✕</button></header><ul id="lmList" class="lm-list"></ul></section>
     <div id="lmCard" class="lm-card" hidden role="dialog" aria-live="polite"><button type="button" class="lm-close" aria-label="Cerrar">✕</button><h3></h3><p class="lm-bone"></p><p class="lm-desc"></p></div>
     <div id="camPad" class="cam-pad" aria-label="Controles de cámara">
       <div class="pad">
